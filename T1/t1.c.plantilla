@@ -1,0 +1,9 @@
+// Coloque aca los #include que necesite
+// Si usa por ejemplo strcpy, ingrese en el shell de comandos:
+// $ man 3 strcpy
+// En SYNOPSIS le indicara que debe incluir el archivo de encabezados string.h
+
+#include "t1.h"
+
+// Programe aca las 3 funciones pedidas
+
