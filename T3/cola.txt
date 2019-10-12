@@ -1,0 +1,6 @@
+4   
+pedro     8     
+juan      2     
+diego     7     
+ximena    4     
+ana       1     
