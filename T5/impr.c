@@ -16,18 +16,24 @@ struct orden {
 /* defina aca las variables globales que necesite y programe las funciones
  * pedidas.
  */
-ColaFifo *cola;
 int n_impr_aux = 0;
-pthread_t *t; 
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t c = PTHREAD_COND_INITIALIZER;
+pthread_t *t; 
+int is_rdy= FALSE;
+ColaFifo *cola;
 
-void * imprimir_thread(void * ptr){
+void * imprimir_thread(void * ptr) {
+  Impr * impr = ptr;
   for(;;){
     pthread_mutex_lock(&m);
-    while(vacia(cola))
+    while(vacia(cola)){
       pthread_cond_wait(&c,&m);
-    Impr * impr = ptr;
+      if (is_rdy){
+        pthread_mutex_unlock(&m);
+        return NULL;
+      }
+    }
     Orden *ord = extraer(cola);
     pthread_mutex_unlock(&m);
     imprimir(ord->doc,impr);
@@ -35,11 +41,10 @@ void * imprimir_thread(void * ptr){
     ord->listo=TRUE;
     pthread_cond_broadcast(&c);
     pthread_mutex_unlock(&m);
-  }  
-  return NULL;
+  } 
 }
 
-void init_impr(Impr **imprs, int n_impr){
+void init_impr(Impr **imprs, int n_impr) {
   n_impr_aux=n_impr;
   t = malloc(sizeof(pthread_t)*n_impr);
   cola = nuevaColaFifo();
@@ -49,9 +54,12 @@ void init_impr(Impr **imprs, int n_impr){
 }
 
 void terminar_impr() {
+  is_rdy = TRUE;
+  pthread_cond_broadcast(&c);
   for(int i = 0; i < n_impr_aux; i++){
     pthread_join(t[i],NULL);
   }
+  destruirColaFifo(cola);
 }
 
 Orden *imprimir_asinc(Doc *doc) {
