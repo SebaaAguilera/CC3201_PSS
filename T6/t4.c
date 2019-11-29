@@ -1,33 +1,47 @@
 #include <stdio.h>
-#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include "integral.h"
 
-typedef struct {
-  Funcion f; void *ptr;
-  double xi, xf, resp;
-  int n;
-} Args;
+double integral_par(Funcion f, void *ptr, double xi, double xf, int n, int p)
+{
+  double step = (xf - xi) / p;
+  double final = 0;
 
-void* integral_mt(void *pt){
-  Args *arg = pt;
-  arg->resp=integral(arg->f,arg->ptr,arg->xi,arg->xf,arg->n);
-  return NULL;
-}
+  double intgs[p]; // dde se recolectarán
+  pid_t pids[p];
 
-double integral_par(Funcion f, void *ptr, double xi, double xf, int n, int p) {
-  pthread_t t[p]; Args array[p];
-  double trap = n/p;
-  double final=0;
-  for (int i=0; i<p; i++){
-    Args *arg = &array[i];
-    arg->f=f; arg->ptr=ptr; arg->xi=xi+i*trap; arg->xf=xi+(i+1)*trap; arg->n=trap;
-    pthread_create(&t[i],NULL,integral_mt,arg);
-  } 
-  for (int i=0; i<p; i++){
-    Args *arg = &array[i];
-    final+= arg->resp;
-    pthread_join(t[i],NULL);
+  for (int i = 0; i < p; i++)
+  {
+    int fd[2];
+    pipe(fd);
+    pids[i] = fork();
+
+    if (pids[i] == 0) //hijo
+    {
+      close(fd[0]);
+      double intg = integral(f, ptr, xi + i * step, xi + (i + 1) * step, n);
+      write(fd[1], (char *)&intg, sizeof(intg));
+      exit(0);
+    }
+
+    else // padre
+    {
+      close(fd[1]);
+      intgs[i] = fd[0];
+    }
   }
-  return final; 
+
+  for (int i = 0; i < p; i++)
+  {
+    double intg;
+    read(intgs[i], &intg, sizeof(intg));
+    final += intg;
+    close(intgs[i]);
+    waitpid(pids[i], NULL, 0);
+  }
+
+  return final;
 }
