@@ -10,37 +10,38 @@ double integral_par(Funcion f, void *ptr, double xi, double xf, int n, int p)
   double step = (xf - xi) / p;
   double final = 0;
 
-  double intgs[p]; // dde se recolectarán
+  double infds[p]; // dde se recolectarán
+  double intg;
   pid_t pids[p];
 
   for (int i = 0; i < p; i++)
   {
-    int fd[2];
-    pipe(fd);
+    int fds[2];
+    pipe(fds);
     pids[i] = fork();
 
     if (pids[i] == 0) //hijo
     {
-      close(fd[0]);
-      double intg = integral(f, ptr, xi + i * step, xi + (i + 1) * step, n);
-      write(fd[1], (char *)&intg, sizeof(intg));
+      close(fds[0]);
+      intg = integral(f, ptr, xi + i * step, xi + (i + 1) * step, n / p);
+      write(fds[1], (char *)&intg, sizeof(intg));
       exit(0);
     }
 
     else // padre
     {
-      close(fd[1]);
-      intgs[i] = fd[0];
+      close(fds[1]);
+      infds[i] = fds[0];
     }
   }
 
   for (int i = 0; i < p; i++)
   {
-    double intg;
-    read(intgs[i], &intg, sizeof(intg));
-    final += intg;
-    close(intgs[i]);
+    read(infds[i], &intg, sizeof(intg));
     waitpid(pids[i], NULL, 0);
+    close(infds[i]);
+
+    final += intg;
   }
 
   return final;
