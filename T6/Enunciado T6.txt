@@ -1,0 +1,1 @@
+Es el mismo enunciado que la tarea 4, pero con la prohibición de usar threads, para ello se utilizarán procesos pesados
